@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NTUEEES LINE Notification</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            touch-action: manipulation;
+        }
+
+        .message-preview {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f8f9fa;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 0.75rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 80px;
+            height: auto;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .container {
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .card-header {
+            padding: 10px 15px;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        .btn {
+            padding: 12px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 15px;
+        }
+
+        @media (max-width: 767px) {
+            .container {
+                padding: 15px;
+            }
+
+            .card-body {
+                padding: 20px;
+            }
+
+            h4 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    <div class="container py-4"></div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fab fa-line mr-2"></i>北小泳隊 - LINE 泳訓通知</h4>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="font-weight-bold">預覽通知</label>
+                    <div id="messagePreview" class="message-preview" aria-label="Message preview content">
+                        等我一下，載入訊息中...
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <button id="copyBtn" class="btn btn-success" data-toggle="tooltip" href="https://line.me/R/"
+                        title="Copy to clipboard">
+                        <i class="fas fa-copy mr-1"></i>複製訊息並跳轉 LINE App
+                    </button>
+                </div>
+
+                <div>
+                    <a id="lineShareLink" target="_blank" href="#" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt mr-1"></i>立馬分享 LINE
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden textarea for copy functionality -->
+    <textarea id="copyText" class="d-none"></textarea>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Initialize tooltips
+            $('[data-toggle="tooltip"]').tooltip();
+
+            // Fetch data with a longer timeout using AbortController
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+            fetch("https://script.google.com/macros/s/AKfycbwZ3lJiG6fsmgCp2CVC9gKshkhSkRDoMpq7f0XRMxyncbtMaEJC8MtOorfGiNilE_U/exec", {
+                signal: controller.signal
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    clearTimeout(timeoutId);
+                    // Populate message preview
+                    $('#messagePreview').text(data.message);
+                    const encodedMessage = encodeURIComponent(data.message);
+                    $('#lineShareLink').attr('href', `https://line.me/R/share?text=${encodedMessage}`);
+                })
+                .catch(error => {
+                    clearTimeout(timeoutId);
+                    console.error("Error fetching data:", error);
+                    $('#messagePreview').text("Error loading message. Please try again later.");
+                });
+
+            // Copy button functionality
+            $('#copyBtn').click(function (e) {
+                e.preventDefault(); // Prevent default behavior
+                const textToCopy = $('#messagePreview').text();
+                const copyText = document.getElementById('copyText');
+                const href = $(this).attr('href');
+
+                // Set the text to copy
+                copyText.value = textToCopy;
+                copyText.classList.remove('d-none');
+                copyText.select();
+
+                try {
+                    // Try to use the clipboard API
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            showCopiedTooltip($(this));
+                            // Open href in a new tab instead of redirecting
+                            setTimeout(() => {
+                                window.open(href, '_blank');
+                            }, 500);
+                        })
+                        .catch(err => {
+                            // Fallback for clipboard API failure
+                            document.execCommand('copy');
+                            showCopiedTooltip($(this));
+                            setTimeout(() => {
+                                window.open(href, '_blank');
+                            }, 500);
+                        });
+                } catch (err) {
+                    // Fallback for older browsers
+                    document.execCommand('copy');
+                    showCopiedTooltip($(this));
+                    setTimeout(() => {
+                        window.open(href, '_blank');
+                    }, 500);
+                }
+
+                copyText.classList.add('d-none');
+            });
+
+            function showCopiedTooltip($button) {
+                $button.tooltip('hide')
+                    .attr('data-original-title', 'Copied!')
+                    .tooltip('show');
+
+                // Reset tooltip text after 1.5 seconds
+                setTimeout(function () {
+                    $button.tooltip('hide')
+                        .attr('data-original-title', 'Copy to clipboard')
+                        .tooltip('show');
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+
+</html>
